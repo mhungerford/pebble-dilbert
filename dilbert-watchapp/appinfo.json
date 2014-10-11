@@ -1,0 +1,18 @@
+{
+  "uuid": "07118138-bc3f-440a-b969-5a87f70d4790",
+  "shortName": "dilbert-watchapp",
+  "longName": "dilbert-watchapp",
+  "companyName": "nicetux",
+  "versionCode": 1,
+  "versionLabel": "1.0",
+  "capabilities": [ "configurable" ],
+  "watchapp": {
+    "watchface": false
+  },
+  "appKeys": {
+    "dummy": 0
+  },
+  "resources": {
+    "media": []
+  }
+}

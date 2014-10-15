@@ -34,10 +34,11 @@ class Server(SimpleXMLRPCServer.SimpleXMLRPCServer):
 		SimpleXMLRPCServer.SimpleXMLRPCServer.server_bind(self)
 
 	def verify_request(self,request, client_address):
-		if client_address[0] in accessList:
-			return 1
-		else:
-			return 0
+		return 1
+		#if client_address[0] in accessList:
+		#	return 1
+		#else:
+		#	return 0
 
 class xmlrpc_registers:
 	"""
@@ -114,8 +115,13 @@ class xmlrpc_registers:
 		subprocess.check_call(["convert",
       "-crop", crop,
       "-adaptive-resize",new_size,
+      "-brightness-contrast", "-35x80",
+      "-posterize" ,"3",
       "-type", "Grayscale", "-colorspace", "Gray", 
-      "-black-threshold", "70%", "-white-threshold", "70%",# "-ordered-dither", "2x1",
+      #"-black-threshold", "30%", "-white-threshold", "60%", 
+      #"-morphology", "thicken", "1x3>:1,0,1",
+      "-ordered-dither", "2x1",
+      #"-dither", "FloydSteinberg", #"Riemersma",
       "-colors", "2", "-depth", "1",
       "-define", "png:compression-level=9", "-define", "png:compression-strategy=0",
       "-define", "png:exclude-chunk=all",

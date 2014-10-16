@@ -125,7 +125,8 @@ class xmlrpc_registers:
       "-colors", "2", "-depth", "1",
       "-define", "png:compression-level=9", "-define", "png:compression-strategy=0",
       "-define", "png:exclude-chunk=all",
-      decoded_workfile_name, "PNG8:" + resized_workfile_name])
+      "-define", "png:bit-depth=1", "-define", "png:color-type=0",
+      decoded_workfile_name, "PNG:" + resized_workfile_name])
 		print "Created resized work file " +  resized_workfile_name
 		
 		#encode the result of the ImageMagick conversion to base64
@@ -138,8 +139,8 @@ class xmlrpc_registers:
 			os.remove(decoded_workfile_name)
 			print "Deleted decoded work file " + decoded_workfile_name
 		
-		os.remove(resized_workfile_name)
-		print "Deleted resized work file " +  resized_workfile_name
+		#os.remove(resized_workfile_name)
+		#print "Deleted resized work file " +  resized_workfile_name
 		
 		return encoded_file
 

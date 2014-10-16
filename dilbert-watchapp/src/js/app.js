@@ -92,6 +92,7 @@ function remoteMagickResize(input_url, crop_width, crop_height, crop_x, crop_y, 
 
 function transferImageBytes(bytes, chunkSize) {
   var retries = 0;
+  console.log("transferImagesBytes");
 
   // This function sends chunks of data.
   sendChunk = function(start) {
@@ -118,8 +119,7 @@ function transferImageBytes(bytes, chunkSize) {
   sendChunk(0);
 }
 
-
-
+// Get a png from the web
 function getPNG(filename, callback, errorCallback) {
   var xhr = new XMLHttpRequest();
   xhr.open("GET", "http://" + ip + port + "/" + filename,true);
@@ -156,8 +156,11 @@ Pebble.addEventListener("appmessage", function(e) {
     "2": "Sel",
     "3": "Dwn"
     };
-    console.log("MIMICSTART");
-    var request = new XmlRpcRequest("http://192.168.1.119:8042/RPC2", "crop_and_resize");  
+
+    // Send the image to remote-magick to crop, resize and dither to 1-bit (b&w)
+    // few javascript png libraries support compressed 1-bit png, so use imagemagick in the cloud.
+    console.log("RemoteMagick start");
+    var request = new XmlRpcRequest("http://10.0.127.103:8042/RPC2", "crop_and_resize");  
     request.addParam("http://dilbert.com/dyn/str_strip/000000000/00000000/0000000/200000/00000/4000/700/204789/204789.strip.gif");
     request.addParam(172);  
     request.addParam(166);  
@@ -166,9 +169,24 @@ Pebble.addEventListener("appmessage", function(e) {
     request.addParam(144);  
     request.addParam(168);  
     var response = request.send();  
-    //console.log(response.parseXML());
     image_base64 = response.parseXML();
-    console.log("MIMICTEST");
+    console.log("RemoteMagick end");
+
+    // Convert base64 to arrayBuffer
+    var buf = window.atob(image_base64);
+    var byteArray = new Uint8Array(new ArrayBuffer(buf.length));
+    for (var i = 0; i < buf.length; i++) {
+       byteArray[i] = buf.charCodeAt(i);
+    }
+
+    var arrayBuffer = [];
+    for(var i=0; i<byteArray.byteLength; i++) {
+      arrayBuffer.push(byteArray[i]);
+    }
+
+    transferImageBytes(arrayBuffer, 2044);
+    console.log("ImageTransferred");
+
 /*
     for( var link_id in app_json.linkDataArray){
       if( app_json.linkDataArray[link_id].from === current &&

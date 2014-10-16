@@ -73,12 +73,15 @@ static void in_received_handler(DictionaryIterator *iter, void *context) {
     switch (tuple->key) {
     case png_data:
       {
-        //APP_LOG(APP_LOG_LEVEL_DEBUG, "received png_data:%d bytes", tuple->length);
+        APP_LOG(APP_LOG_LEVEL_DEBUG, "received png_data:%d bytes", tuple->length);
         int png_size = tuple->length;
         char *png_buffer = malloc(png_size);
         // TODO: need to copy for now, as upng frees the buffer, fix eventually
         memcpy(png_buffer, tuple->value->data, tuple->length);
-        free(gbitmap_ptr);
+        if (gbitmap_ptr) {
+          free(gbitmap_ptr);
+          gbitmap_ptr = NULL;
+        }
         gbitmap_ptr = gbitmap_create_with_png_data((uint8_t*)png_buffer, png_size);
         layer_set_hidden(text_layer_get_layer(text_layer),true);
         bitmap_layer_set_bitmap(bitmap_layer, gbitmap_ptr);

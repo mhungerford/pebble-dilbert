@@ -10,7 +10,8 @@
     "watchface": false
   },
   "appKeys": {
-    "dummy": 0
+    "button_event" : 0,
+    "png_data" : 1
   },
   "resources": {
     "media": []

@@ -5,7 +5,7 @@
   "companyName": "nicetux",
   "versionCode": 1,
   "versionLabel": "1.0",
-  "capabilities": [ "configurable" ],
+  "capabilities": [],
   "watchapp": {
     "watchface": false
   },

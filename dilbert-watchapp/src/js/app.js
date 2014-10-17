@@ -1,25 +1,27 @@
-var ip = '192.168.1.119';
+var ip = '192.168.1.119';//'10.0.127.103';//192.168.1.119'; // remotemagick server
 var port = ':8042'; // remotemagick port
-var date = new Date();// current date for dilbert comic
-var image_base64 = "";
+var date = new Date(2014, 10 - 1, 8);// current date for dilbert comic
+var weekXML = null;
+var frameidx = 0;
+var reqDayIdx = 0;
 
 Pebble.addEventListener("ready",
   function(e) {
     console.log("started js app");
     
-    if (window.localStorage.getItem('ip') !== null) {
-      ip = window.localStorage.getItem('ip');
-      console.log("Loading config ip=" + ip);
-    }
-    //getDilbertHash(date);
+    //Load the current days comic frame 1
+    //needs timeout callback, otherwise blocks "ready" too long and crashes app
+    setTimeout(getDilbertXML(date, frameidx++, getDilbertDayImage),1000);
   }
 );
 
-function getDilbertHash(reqDate) {
+function getDilbertXML(reqDate, frame, callback) {
     var xhr = new XMLHttpRequest();
     var strip_url = null;
+    var xml = null;
+    console.log("Getting: " + 'Year=' + reqDate.getFullYear() + '&Month=' + (reqDate.getMonth() + 1) + '&Day=' + reqDate.getDate());
     xhr.open("GET", 'http://dilbert.com/xml/widget.daily/?'
-				+ encodeURIComponent('Year=' + reqDate.getFullYear() + '&Month=' + (reqDate.getMonth() + 1) + '&Day='+reqDate.getDate()), true);
+				+ 'Year=' + reqDate.getFullYear() + '&Month=' + (reqDate.getMonth() + 1) + '&Day='+reqDate.getDate(), true);
     xhr.onload = function (e) {
       if (xhr.readyState === 4) {
         if(xhr.status === 200) {
@@ -27,20 +29,10 @@ function getDilbertHash(reqDate) {
           //console.log(xhr.responseText);
           //var filename = app_json.nodeDataArray[0].source.substring(2);
           //console.log("getting initial image: " + filename);
-          var xml = new DOMParser();
-          xml = xml.parseFromString(xhr.responseText,"text/xml");
-          var reqDayIdx = parseInt(xml.getElementsByTagName("CurrentDay")[0].firstChild.nodeValue);
-          var dayNode = xml.getElementsByTagName("Day")[reqDayIdx];
-          for (i=0; i < dayNode.childNodes.length; i++) {
-            if (dayNode.childNodes[i].nodeName == "URL_Strip") {
-              strip_url = dayNode.childNodes[i].firstChild.nodeValue;
-            }
-          }
-
-          if (strip_url !== null || strip_url !== undefined) {
-            getPNG(filename, function(bytes) {transferImageBytes(bytes, 2044);});
-          }
- 
+          var domParser = new DOMParser();
+          console.log("XML:" + xhr.responseText);
+          xml = domParser.parseFromString(xhr.responseText,"text/xml");
+          callback(frame, xml);
         } else {
           console.log(xhr.statusText);
         }
@@ -54,40 +46,41 @@ function getDilbertHash(reqDate) {
     xhr.send(null);
 }
 
-function remoteMagickResize(input_url, crop_width, crop_height, crop_x, crop_y, output_base64) {
-    var xhr = new XMLHttpRequest();
-    var strip_url = null;
-    xhr.open("GET", 'http://dilbert.com/xml/widget.daily/?'
-				+ encodeURIComponent('Year=' + reqDate.getFullYear() + '&Month=' + (reqDate.getMonth() + 1) + '&Day='+reqDate.getDate()), true);
-    xhr.onload = function (e) {
-      if (xhr.readyState === 4) {
-        if(xhr.status === 200) {
-          console.log("connected");
-          var xml = new DOMParser();
-          xml = xml.parseFromString(xhr.responseText,"text/xml");
-          var reqDayIdx = parseInt(xml.getElementsByTagName("CurrentDay")[0].firstChild.nodeValue);
-          var dayNode = xml.getElementsByTagName("Day")[reqDayIdx];
-          for (i=0; i < dayNode.childNodes.length; i++) {
-            if (dayNode.childNodes[i].nodeName == "URL_Strip") {
-              strip_url = dayNode.childNodes[i].firstChild.nodeValue;
-            }
-          }
-
-          if (strip_url !== null || strip_url !== undefined) {
-            getPNG(filename, function(bytes) {transferImageBytes(bytes, 2044);});
-          }
- 
-        } else {
-          console.log(xhr.statusText);
+function getDilbertDayImage(frame, xml) {
+  console.log("getDilbertDayImage");
+  var width = [];
+  var offset = [];
+  var framecnt = 0;
+  var dayCount = parseInt(xml.getElementsByTagName("CurrentDay")[0].firstChild.nodeValue);
+  //var dayCount = xml.getElementsByTagName("Day").length;
+  console.log("DayCount:" + dayCount);
+  var dayNode = xml.getElementsByTagName("Day")[dayCount - reqDayIdx - 1];
+  for (i=0; i < dayNode.childNodes.length; i++) {
+    if (dayNode.childNodes[i].nodeName == "URL_Strip") {
+      strip_url = dayNode.childNodes[i].firstChild.nodeValue;
+      console.log("strip_url:" + strip_url);
+    }
+    if (dayNode.childNodes[i].nodeName == "Panels") {
+      for (j=0; j < dayNode.childNodes[i].childNodes.length; j++) {
+        for (k=0; k < dayNode.childNodes[i].childNodes[j].childNodes.length; k++) {
+          if (dayNode.childNodes[i].childNodes[j].childNodes[k].nodeName == "Width") {
+            width.push(dayNode.childNodes[i].childNodes[j].childNodes[k].firstChild.data);
+          } 
+          if (dayNode.childNodes[i].childNodes[j].childNodes[k].nodeName == "OffsetLeft") {
+            offset.push(dayNode.childNodes[i].childNodes[j].childNodes[k].firstChild.data);
+          } 
         }
-      }else{
-        console.log("status wrong " + xhr.statusText);
       }
     }
-    xhr.onerror = function (e) {
-      console.log(xhr.statusText);
-    }
-    xhr.send(null);
+  }
+
+  if (strip_url === null || strip_url === undefined) {
+    console.log("URL:" + strip_url);
+  }
+
+  if (frameidx <= width.length) {
+    loadDilbertImage(strip_url, width[frame], offset[frame]);
+  }
 }
 
 function transferImageBytes(bytes, chunkSize) {
@@ -112,7 +105,7 @@ function transferImageBytes(bytes, chunkSize) {
             sendChunk(start);
           }
         }
-    );
+        );
   };
 
   //start sending png data to pebble
@@ -146,31 +139,30 @@ function getPNG(filename, callback, errorCallback) {
   xhr.send(null);
 }
 
-// got message from pebble
-Pebble.addEventListener("appmessage", function(e) {
-  //console.log("got message " + JSON.stringify(e.payload));
-  //if (e.payload.button_event !== undefined) {
-    console.log("button_event: " + e.payload.button_event);
-    var button_map = {
-    "1": "Up", 
-    "2": "Sel",
-    "3": "Dwn"
-    };
-
+function remoteMagickResize(input_url, crop_width, crop_height, crop_x, crop_y) {
     // Send the image to remote-magick to crop, resize and dither to 1-bit (b&w)
     // few javascript png libraries support compressed 1-bit png, so use imagemagick in the cloud.
     console.log("RemoteMagick start");
-    var request = new XmlRpcRequest("http://10.0.127.103:8042/RPC2", "crop_and_resize");  
-    request.addParam("http://dilbert.com/dyn/str_strip/000000000/00000000/0000000/200000/00000/4000/700/204789/204789.strip.gif");
-    request.addParam(172);  
-    request.addParam(166);  
-    request.addParam(386);  
-    request.addParam(4);  
+    var request = new XmlRpcRequest("http://" + ip + port + "/RPC2", "crop_and_resize");  
+    request.addParam(input_url);
+    request.addParam(crop_width);  
+    request.addParam(crop_height);  
+    request.addParam(crop_x);  
+    request.addParam(crop_y);  
     request.addParam(144);  
     request.addParam(168);  
+
     var response = request.send();  
-    image_base64 = response.parseXML();
     console.log("RemoteMagick end");
+    return response.parseXML(); //base64 string
+}
+
+function loadDilbertImage(url, width, offset) {
+    var image_base64 = "";
+    
+    //"http://dilbert.com/dyn/str_strip/000000000/00000000/0000000/200000/00000/4000/700/204789/204789.strip.gif"
+
+    var image_base64 = remoteMagickResize("http://dilbert.com" + url, width, 191, offset, 4); 
 
     // Convert base64 to arrayBuffer
     var buf = window.atob(image_base64);
@@ -186,45 +178,26 @@ Pebble.addEventListener("appmessage", function(e) {
 
     transferImageBytes(arrayBuffer, 2044);
     console.log("ImageTransferred");
+}
 
-/*
-    for( var link_id in app_json.linkDataArray){
-      if( app_json.linkDataArray[link_id].from === current &&
-        app_json.linkDataArray[link_id].fromPort === button_map[e.payload.button_event]){
-          console.log("to:" + app_json.linkDataArray[link_id].to);
-          //set the new current node
-          current = app_json.linkDataArray[link_id].to;
+// got message from pebble
+Pebble.addEventListener("appmessage", function(e) {
+  //console.log("got message " + JSON.stringify(e.payload));
+  //if (e.payload.button_event !== undefined) {
+  console.log("button_event: " + e.payload.button_event);
+  var button_map = {
+    "1": "Up", 
+    "2": "Sel",
+    "3": "Dwn"
+  };
+  if (e.payload.button_event == "1") {
+    reqDayIdx++;
+    frameidx = 0;
+    setTimeout(getDilbertXML(date, frameidx++, getDilbertDayImage),1000);
+  }
 
-          for (var node_id in app_json.nodeDataArray) {
-            if( app_json.nodeDataArray[node_id].key === current) {
-              var filename = app_json.nodeDataArray[node_id].source.substring(2);
-              console.log("image:" + filename);
-
-              getPNG(filename, function(bytes) {transferImageBytes(bytes, 2044);
-                });
-              break;
-            }
-          }
-          break;
-        }
-    }
-    */
-  //}
-});
-
-Pebble.addEventListener("showConfiguration", function() {
-  console.log("showing configuration");
-  //setCurrent(0);
-  Pebble.openURL("data:text/html,"+encodeURI('<!DOCTYPE html> <html> <head> <title>Configure_Sketchup</title> <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><img src="data:image/png;base64,' + image_base64 + '"/></body></html><!--.html'));
-});
-
-Pebble.addEventListener("webviewclosed", function(e) {
-  console.log("configuration closed");
-  if (e.response && e.response.length) {
-    var json_data = decodeURIComponent(e.response);
-    var config = JSON.parse(json_data);
-    window.localStorage.setItem("ip",config.ip);
-    console.log("setting ip to " + config.ip);
+  if (e.payload.button_event == "3") {
+    setTimeout(getDilbertXML(date, frameidx++, getDilbertDayImage),1000);
   }
 });
 
